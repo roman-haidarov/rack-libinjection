@@ -1,0 +1,5 @@
+# rack-libinjection vendor manifest. Do not edit by hand. Regenerate with: ruby script/vendor_libs.rb
+libinjection_version=4.0.0
+libinjection_url=https://codeload.github.com/libinjection/libinjection/tar.gz/v4.0.0?dummy=/
+libinjection_archive_sha256=a69d27e3d98608df89203c4e1c00c034fe0f8c723017e4088ab53ce3ff5a9129
+libinjection_tree_sha256=de73d6fdaa9b51970142c74941031a058491d5c883bb1eca9faa8bf9f874703b
