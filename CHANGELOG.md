@@ -2,8 +2,13 @@
 
 ## Unreleased
 
+## 0.1.1 - 2026-05-22
+
 ### Security / hardening
 
+- SQLi fingerprint Ruby strings are now constructed with a bounded length derived from the vendored libinjection fingerprint buffer instead of relying on C-string scanning.
+- Vendored archive extraction now explicitly rejects absolute paths, malformed paths, and `..` traversal before the keep-list is applied.
+- Sanitizer CI now runs the ASan/UBSan smoke job across Ruby 3.3, 3.4, and 4.0.
 - Added explicit Rack middleware parser-error policy. `parser_errors: :auto` now reports native libinjection and known Rack parameter/cookie parser errors in report mode and fails closed in block mode; `:report`, `:block`, and `:raise` are available for explicit behavior.
 - Added explicit skipped-input policy. `skipped_inputs: :auto` reports `max_value_bytes` / `max_depth` skips in report mode and fails closed in block mode; `:report`, `:block`, and `:allow` are available for explicit behavior.
 - Narrowed the default ignored params to `authenticity_token`; sensitive values such as `password` are scanned by default while raw values remain absent from notifications.
@@ -52,6 +57,7 @@
   (default 1024). The extension uses `rb_nogvl(..., RB_NOGVL_OFFLOAD_SAFE)`
   when the Ruby headers provide that flag, and falls back to
   `rb_thread_call_without_gvl` on older headers.
+- Documented the native invariant that `LI_NOGVL_THRESHOLD` controls both no-GVL execution and the temporary C-buffer copy decision.
 - `Rack::LibInjection` middleware rewritten on top of a mutable accumulator:
   no more per-level `flat_map`, no more `path + [key]` allocations, no more
   intermediate hashes per match. Path keys are now built as plain `String`s.

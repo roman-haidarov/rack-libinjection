@@ -288,6 +288,22 @@ static void raise_on_error(injection_result_t result) {
     }
 }
 
+static size_t li_bounded_strlen(const char *str, size_t max_len) {
+    size_t len = 0;
+
+    while (len < max_len && str[len] != '\0') {
+        len++;
+    }
+
+    return len;
+}
+
+static VALUE li_sqli_fingerprint_value(const char *fingerprint) {
+    size_t len = li_bounded_strlen(fingerprint, LI_SQLI_FINGERPRINT_SIZE);
+
+    return len == 0 ? Qnil : rb_str_new(fingerprint, (long)len);
+}
+
 typedef struct {
     const char *src;
     size_t len;
@@ -460,7 +476,7 @@ static int li_url_decode_into(char *dst, const char *src, size_t len, size_t *ou
 
 static VALUE li_scan_out_to_value(const li_scan_out_t *out) {
     if (out->found_type == LI_THREAT_SQLI) {
-        return rb_ary_new3(2, sym_sqli, rb_str_new_cstr(out->sqli_fingerprint));
+        return rb_ary_new3(2, sym_sqli, li_sqli_fingerprint_value(out->sqli_fingerprint));
     }
     if (out->found_type == LI_THREAT_XSS) {
         return rb_ary_new3(2, sym_xss, Qnil);
@@ -578,7 +594,7 @@ static VALUE li_sqli_result_hash(const struct libinjection_sqli_state *state,
     rb_hash_aset(hash, li_id_sym("type"), sym_sqli);
     rb_hash_aset(hash, li_id_sym("detected"), result == LIBINJECTION_RESULT_TRUE ? Qtrue : Qfalse);
     rb_hash_aset(hash, li_id_sym("fingerprint"),
-                 fingerprint[0] == '\0' ? Qnil : rb_str_new_cstr(fingerprint));
+                 li_sqli_fingerprint_value(fingerprint));
     rb_hash_aset(hash, li_id_sym("flags"), INT2NUM(flags));
     rb_hash_aset(hash, li_id_sym("context"), context_name);
     rb_hash_aset(hash, li_id_sym("stats"), li_sqli_stats_hash(state));
@@ -654,7 +670,7 @@ static VALUE rb_li_sqli_fingerprint(VALUE self, VALUE input) {
     memcpy(fingerprint, args.work.sqli_fingerprint, sizeof(fingerprint));
     raise_on_error(args.work.sqli_result);
 
-    return args.work.sqli_detected ? rb_str_new_cstr(fingerprint) : Qnil;
+    return args.work.sqli_detected ? li_sqli_fingerprint_value(fingerprint) : Qnil;
 }
 
 typedef struct {
@@ -876,7 +892,7 @@ static VALUE rb_li_sqli_fingerprint_for(int argc, VALUE *argv, VALUE self) {
 
     result = li_run_sqli_context(str, flags, &state);
     raise_on_error(result);
-    return state.fingerprint[0] == '\0' ? Qnil : rb_str_new_cstr(state.fingerprint);
+    return li_sqli_fingerprint_value(state.fingerprint);
 }
 
 static VALUE rb_li_sqli_contexts(VALUE self, VALUE input) {
@@ -924,7 +940,7 @@ static VALUE rb_li_sqli_tokens(int argc, VALUE *argv, VALUE self) {
         int tlen;
         int i;
         libinjection_sqli_fingerprint(&state, flags);
-        tlen = (int)strlen(state.fingerprint);
+        tlen = (int)li_bounded_strlen(state.fingerprint, LI_SQLI_FINGERPRINT_SIZE);
         for (i = 0; i < tlen; i++) {
             rb_ary_push(out, li_sqli_token_hash(&state.tokenvec[i]));
         }
