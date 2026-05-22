@@ -138,6 +138,25 @@ def http_download_to_file!(url, path, redirect_limit: 3)
   end
 end
 
+def safe_vendor_target_for!(relative)
+  if relative.include?("\0") || relative.start_with?("/", "\\")
+    abort "Unsafe archive path: #{relative.inspect}"
+  end
+
+  parts = relative.split("/")
+  if parts.empty? || parts.any? { |part| part.empty? || part == "." || part == ".." }
+    abort "Unsafe archive path: #{relative.inspect}"
+  end
+
+  root = File.expand_path(LIB_DIR)
+  target = File.expand_path(relative, root)
+  unless target.start_with?(root + File::SEPARATOR)
+    abort "Unsafe archive path escapes vendor root: #{relative.inspect}"
+  end
+
+  target
+end
+
 def download_archive!(path)
   url = format(PIN[:url], version: PIN[:version])
   puts "Downloading #{url}"
@@ -166,10 +185,11 @@ def extract_archive!(archive)
     tar.each do |entry|
       relative = entry.full_name.sub(prefix_re, "")
       next if relative.empty? || relative == entry.full_name
+
+      target = safe_vendor_target_for!(relative)
       next unless PIN[:keep].include?(relative)
       next unless entry.file?
 
-      target = File.join(LIB_DIR, relative)
       FileUtils.mkdir_p(File.dirname(target))
       File.binwrite(target, entry.read)
     end
